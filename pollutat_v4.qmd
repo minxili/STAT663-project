@@ -1,0 +1,1072 @@
+---
+title: "pollutant_v3"
+format: html
+editor: visual
+---
+
+## Packages and data loading
+
+```{r}
+library(tidyverse)
+library(lubridate)
+library(janitor)
+
+df <- read_csv("pollution_2000_2023.csv") %>%
+  clean_names()
+
+df <- df %>%
+  mutate(
+    date = ymd(date),
+    year = year(date),
+    month = month(date, label = TRUE)
+  )
+
+df <- df %>%
+  filter(
+    o3_mean  >= 0,
+    no2_mean >= 0,
+    so2_mean >= 0,
+    co_mean  >= 0
+  )
+
+df <- df %>%
+  mutate(
+    O3_valid  = o3_mean  != 0,
+    NO2_valid = no2_mean != 0
+  )
+
+
+coverage_days <- df %>%
+  group_by(state, year) %>%
+  summarise(
+    O3_days  = sum(O3_valid,  na.rm = TRUE),
+    NO2_days = sum(NO2_valid, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# o3 & no2 coverage days >= 250(year)
+coverage_days <- coverage_days %>%
+  mutate(
+    O3_full  = O3_days  >= 250,
+    NO2_full = NO2_days >= 250
+  )
+
+state_full_years <- coverage_days %>%
+  group_by(state) %>%
+  summarise(
+    O3_years  = sum(O3_full),
+    NO2_years = sum(NO2_full),
+    .groups = "drop"
+  )
+
+# years of enough coverage days >= 10
+good_states <- state_full_years %>%
+  filter(O3_years >= 10, NO2_years >= 10) %>%
+  pull(state)
+
+good_states  
+
+df_clean <- df %>%
+  filter(state %in% good_states)
+
+df_clean <- df_clean %>%
+  filter(year != 2023) # lack of enough observations
+```
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+df_clean %>%
+  count(year) %>%
+  ggplot(aes(x = year, y = n)) +
+  geom_line(color = "steelblue", linewidth = 1) +
+  geom_point(color = "steelblue") +
+  scale_y_continuous(
+    limits = c(min(df_clean %>% count(year) %>% pull(n)) * 0.95, NA)
+  ) +
+  labs(
+    title = "Number of Observations per year",
+    x = "Year",
+    y = "Number of Observations"
+  ) +
+  theme_minimal()
+
+```
+
+```{r}
+df_clean %>%
+  distinct(state, year) %>%
+  count(year) %>%
+  ggplot(aes(x = year, y = n)) +
+  geom_line(color = "darkgreen", linewidth = 1) +
+  geom_point(color = "darkgreen") +
+  labs(
+    title = "Number of States with Valid O3/NO2 Monitoring per year",
+    x = "Year",
+    y = "State Count"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(usmap)
+library(scales)
+
+# time
+records_by_year <- df_clean %>%
+  count(year)
+
+# map
+records_by_state <- df_clean %>%
+  count(state)
+
+common_theme <- theme_minimal(base_size = 11) +
+  theme(
+    plot.title = element_text(face = "bold", size = 12),
+    plot.subtitle = element_text(size = 10, color = "gray40")
+  )
+
+p1 <- ggplot(records_by_year, aes(x = year, y = n)) +
+  geom_line(color = "#1B4F72", linewidth = 1) +
+  geom_point(color = "#1B4F72", size = 2) +
+  scale_y_continuous(labels = comma) +
+  labs(
+    title = "Number of Records by Year (2000–2023)",
+    x = "Year", y = "Record Count"
+  ) +
+  common_theme
+
+p2 <- plot_usmap(data = records_by_state, values = "n", color = "white") +
+  scale_fill_continuous(
+    low = "#D4E6F1", high = "#1B4F72",
+    name = "Record Count", label = scales::comma
+  ) +
+  labs(
+    title = "Spatial Distribution of Records"
+  ) +
+  common_theme +
+  theme(legend.position = "right")
+p2 <- p2 +
+  theme(
+    axis.text = element_blank(),
+    axis.ticks = element_blank(),
+    axis.title = element_blank()
+  )
+
+p3 <- records_by_state %>%
+  arrange(desc(n)) %>%
+  slice_head(n = 15) %>%               # 等价 head(15)，更明确一点
+  ggplot(aes(x = reorder(state, n), y = n / 1000)) +
+  geom_col(fill = "#1B4F72") +
+  coord_flip(clip = "off") +           # 关键：防止右边被裁掉
+  scale_y_continuous(
+    labels = label_number(accuracy = 1, suffix = "K")
+  ) +
+  labs(
+    title    = "Top 15 States by Record Count",
+    x = NULL,
+    y = "Record Count (thousands)"
+  ) +
+  common_theme +
+  theme(
+    axis.text.y  = element_text(size = 8),
+    plot.margin  = margin(t = 5, r = 20, b = 5, l = 5)  # 右边多留一点空
+  )
+
+library(patchwork)
+
+layout <- (p1) /
+  ((p2 | p3) + plot_layout(widths = c(1, 1.5))) +
+  plot_layout(heights = c(1, 1.1)) +
+  plot_annotation(
+    theme = theme(
+      plot.title = element_text(size = 16, face = "bold", hjust = 0.5)
+    )
+  )
+
+layout
+```
+## Year-level trend
+
+```{r}
+yearly_aqi <- df_clean %>%
+  group_by(year) %>%
+  summarise(
+    o3_aqi  = mean(o3_aqi,  na.rm = TRUE),
+    co_aqi  = mean(co_aqi,  na.rm = TRUE),
+    so2_aqi = mean(so2_aqi, na.rm = TRUE),
+    no2_aqi = mean(no2_aqi, na.rm = TRUE)
+  ) %>%
+  pivot_longer(
+    cols = c(o3_aqi, co_aqi, so2_aqi, no2_aqi),
+    names_to = "pollutant",
+    values_to = "aqi"
+  ) %>%
+  mutate(
+    pollutant = recode(pollutant,
+                       o3_aqi  = "O3 AQI",
+                       co_aqi  = "CO AQI",
+                       so2_aqi = "SO2 AQI",
+                       no2_aqi = "NO2 AQI")
+  )
+
+
+ggplot(yearly_aqi, aes(x = year, y = aqi, color = pollutant)) +
+  geom_line(linewidth = 1) +
+  geom_point() +
+  theme_minimal() +
+  labs(
+    title = "National Average AQI by Pollutant (2000–2022)",
+    x = "Year",
+    y = "Average AQI",
+    color = "Pollutant"
+  )
+```
+
+```{r}
+# Line chart(single pollutant)
+p_o3 <- ggplot(filter(yearly_aqi, pollutant == "O3 AQI"),
+               aes(x = year, y = aqi)) +
+  geom_line() + geom_point() +
+  labs(title = "O3", x = "", y = "")
+
+p_co <- ggplot(filter(yearly_aqi, pollutant == "CO AQI"),
+               aes(x = year, y = aqi)) +
+  geom_line() + geom_point() +
+  labs(title = "CO", x = "", y = "")
+
+p_so2 <- ggplot(filter(yearly_aqi, pollutant == "SO2 AQI"),
+                aes(x = year, y = aqi)) +
+  geom_line() + geom_point() +
+  labs(title = "SO2", x = "", y = "")
+
+p_no2 <- ggplot(filter(yearly_aqi, pollutant == "NO2 AQI"),
+                aes(x = year, y = aqi)) +
+  geom_line() + geom_point() +
+  labs(title = "NO2", x = "", y = "")
+
+library(patchwork)
+(p_o3 | p_co) /
+  (p_so2 | p_no2)
+```
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+monthly_o3 <- df_clean %>%
+  group_by(year, month) %>%
+  summarise(o3 = mean(o3_aqi, na.rm = TRUE), .groups = "drop")
+
+ggplot(monthly_o3, aes(x = month, y = year, fill = o3)) +
+  geom_tile() +
+  scale_fill_viridis_c(option = "C") +
+  labs(
+    title = "Seasonal Heatmap of O3 AQI (2000–2022)",
+    x = "Month",
+    y = "Year",
+    fill = "O3 AQI"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+library(tidyverse)
+
+# calculate slope
+slope_df <- yearly_aqi %>%
+  group_by(pollutant) %>%
+  summarise(
+    slope = coef(lm(aqi ~ year))[2]
+  ) %>%
+  arrange(slope)  
+
+# visualize
+ggplot(slope_df, aes(x = reorder(pollutant, slope), y = slope, fill = slope)) +
+  geom_col() +
+  geom_text(aes(label = round(slope, 3)), vjust = -0.5, size = 4) +
+  scale_fill_gradient2(
+    low = "blue", mid = "white", high = "red", midpoint = 0,
+    name = "Slope"
+  ) +
+  labs(
+    title = "Annual Decline Rate of Pollutants (2000–2022)",
+    subtitle = "Negative slope = improvement (from linear regression AQI ~ Year)",
+    x = "Pollutant",
+    y = "Slope (AQI per year)"
+  ) +
+  theme_minimal(base_size = 14)
+```
+
+## State-level trend
+
+```{r}
+library(usmap)
+# Summarized by state and year(recent 10 years)
+state_pollutants <- df_clean %>%
+  filter(year >= 2010) %>%   
+  group_by(state) %>%
+  summarise(
+    o3_mean  = mean(o3_mean,  na.rm = TRUE),
+    co_mean  = mean(co_mean,  na.rm = TRUE),
+    so2_mean = mean(so2_mean, na.rm = TRUE),
+    no2_mean = mean(no2_mean, na.rm = TRUE),
+    .groups  = "drop"
+  )
+```
+
+```{r}
+# Choropleth map
+plot_usmap(data = state_pollutants,
+           regions = "states",
+           values = "o3_mean") +
+  scale_fill_continuous(
+    name = "Avg O3 (2010–2023)",
+    label = scales::label_number(accuracy = 0.001)
+  ) +
+  labs(title = "Average O3 Levels by State (2010–2023)") +
+  theme(legend.position = "right")
+
+plot_usmap(data = state_pollutants,
+           regions = "states",
+           values = "co_mean") +
+  scale_fill_continuous(
+    name = "Avg O3 (2010–2023)",
+    label = scales::label_number(accuracy = 0.001)
+  ) +
+  labs(title = "Average CO Levels by State (2010–2023)") +
+  theme(legend.position = "right")
+
+plot_usmap(data = state_pollutants,
+           regions = "states",
+           values = "so2_mean") +
+  scale_fill_continuous(
+    name = "Avg O3 (2010–2023)",
+    label = scales::label_number(accuracy = 0.001)
+  ) +
+  labs(title = "Average SO2 Levels by State (2010–2023)") +
+  theme(legend.position = "right")
+
+plot_usmap(data = state_pollutants,
+           regions = "states",
+           values = "no2_mean") +
+  scale_fill_continuous(
+    name = "Avg O3 (2010–2023)",
+    label = scales::label_number(accuracy = 0.001)
+  ) +
+  labs(title = "Average NO2 Levels by State (2010–2023)") +
+  theme(legend.position = "right")
+# gray means no data
+```
+
+## Ploty
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(plotly)
+
+state_lookup <- data.frame(
+  state = state.name,
+  abbr  = state.abb,
+  stringsAsFactors = FALSE
+) |>
+  bind_rows(data.frame(state = "District Of Columbia", abbr = "DC"))
+
+state_year_long <- df_clean %>%
+  group_by(state, year) %>%
+  summarise(
+    o3  = mean(o3_mean,  na.rm = TRUE),
+    no2 = mean(no2_mean, na.rm = TRUE),
+    so2 = mean(so2_mean, na.rm = TRUE),
+    co  = mean(co_mean,  na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  pivot_longer(
+    cols = c(o3, no2, so2, co),
+    names_to = "pollutant",
+    values_to = "value"
+  ) %>%
+  left_join(state_lookup, by = "state")
+
+all_years <- sort(unique(state_year_long$year))
+all_pollutants <- c("no2", "o3", "so2", "co")
+
+complete_grid <- expand.grid(
+  year = all_years,
+  state = state_lookup$state,
+  pollutant = all_pollutants,
+  stringsAsFactors = FALSE
+) %>%
+  left_join(state_lookup, by = "state")
+
+state_year_complete <- complete_grid %>%
+  left_join(
+    state_year_long %>% select(year, state, pollutant, value), 
+    by = c("year", "state", "pollutant")
+  )
+
+pollutant_ranges <- state_year_complete %>%
+  group_by(pollutant) %>%
+  summarise(
+    min_val = min(value, na.rm = TRUE),
+    max_val = max(value, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+data_no2 <- state_year_complete %>% 
+  filter(pollutant == "no2") %>%
+  arrange(year, abbr)
+
+fig_no2 <- plot_ly(
+  data = data_no2,
+  type = "choropleth",
+  locations = ~abbr,
+  locationmode = "USA-states",
+  z = ~value,
+  frame = ~year,
+  text = ~paste0(
+    state, "<br>",
+    "Year: ", year, "<br>",
+    "NO\u2082: ", ifelse(is.na(value), "No data", round(value, 3))
+  ),
+  hoverinfo = "text",
+  colorscale = "Reds",
+  showscale = TRUE,
+  zmin = pollutant_ranges$min_val[pollutant_ranges$pollutant == "no2"],
+  zmax = pollutant_ranges$max_val[pollutant_ranges$pollutant == "no2"]
+) %>%
+  layout(
+    title = "Annual NO\u2082 Pollution Levels by State",
+    geo = list(
+      scope = "usa",
+      projection = list(type = "albers usa"),
+      showlakes = TRUE,
+      lakecolor = toRGB("white")
+    )
+  )
+
+fig_no2
+
+data_o3 <- state_year_complete %>% 
+  filter(pollutant == "o3") %>%
+  arrange(year, abbr)
+
+fig_o3 <- plot_ly(
+  data = data_o3,
+  type = "choropleth",
+  locations = ~abbr,
+  locationmode = "USA-states",
+  z = ~value,
+  frame = ~year,
+  text = ~paste0(
+    state, "<br>",
+    "Year: ", year, "<br>",
+    "O\u2083: ", ifelse(is.na(value), "No data", round(value, 3))
+  ),
+  hoverinfo = "text",
+  colorscale = "Reds",
+  showscale = TRUE,
+  zmin = pollutant_ranges$min_val[pollutant_ranges$pollutant == "o3"],
+  zmax = pollutant_ranges$max_val[pollutant_ranges$pollutant == "o3"]
+) %>%
+  layout(
+    title = "Annual O\u2083 Pollution Levels by State",
+    geo = list(
+      scope = "usa",
+      projection = list(type = "albers usa"),
+      showlakes = TRUE,
+      lakecolor = toRGB("white")
+    )
+  )
+
+fig_o3
+
+data_so2 <- state_year_complete %>% 
+  filter(pollutant == "so2") %>%
+  arrange(year, abbr)
+
+fig_so2 <- plot_ly(
+  data = data_so2,
+  type = "choropleth",
+  locations = ~abbr,
+  locationmode = "USA-states",
+  z = ~value,
+  frame = ~year,
+  text = ~paste0(
+    state, "<br>",
+    "Year: ", year, "<br>",
+    "SO\u2082: ", ifelse(is.na(value), "No data", round(value, 3))
+  ),
+  hoverinfo = "text",
+  colorscale = "Reds",
+  showscale = TRUE,
+  zmin = pollutant_ranges$min_val[pollutant_ranges$pollutant == "so2"],
+  zmax = pollutant_ranges$max_val[pollutant_ranges$pollutant == "so2"]
+) %>%
+  layout(
+    title = "Annual SO\u2082 Pollution Levels by State",
+    geo = list(
+      scope = "usa",
+      projection = list(type = "albers usa"),
+      showlakes = TRUE,
+      lakecolor = toRGB("white")
+    )
+  )
+
+fig_so2
+
+data_co <- state_year_complete %>% 
+  filter(pollutant == "co") %>%
+  arrange(year, abbr)
+
+fig_co <- plot_ly(
+  data = data_co,
+  type = "choropleth",
+  locations = ~abbr,
+  locationmode = "USA-states",
+  z = ~value,
+  frame = ~year,
+  text = ~paste0(
+    state, "<br>",
+    "Year: ", year, "<br>",
+    "CO: ", ifelse(is.na(value), "No data", round(value, 3))
+  ),
+  hoverinfo = "text",
+  colorscale = "Reds",
+  showscale = TRUE,
+  zmin = pollutant_ranges$min_val[pollutant_ranges$pollutant == "co"],
+  zmax = pollutant_ranges$max_val[pollutant_ranges$pollutant == "co"]
+) %>%
+  layout(
+    title = "Annual CO Pollution Levels by State",
+    geo = list(
+      scope = "usa",
+      projection = list(type = "albers usa"),
+      showlakes = TRUE,
+      lakecolor = toRGB("white")
+    )
+  )
+
+fig_co
+
+```
+
+```{r}
+library(dplyr)
+
+total_df <- df_clean %>%
+  group_by(state, year) %>%
+  summarise(
+    o3  = mean(o3_aqi,  na.rm = TRUE),
+    no2 = mean(no2_aqi, na.rm = TRUE),
+    so2 = mean(so2_aqi, na.rm = TRUE),
+    co  = mean(co_aqi,  na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    total_pollution = o3 + no2 + so2 + co
+  ) %>%
+  left_join(state_lookup, by = "state") %>%
+  filter(!is.na(abbr)) %>%
+  arrange(year, abbr)
+
+library(plotly)
+
+fig_total <- plot_ly(
+  data = total_df,
+  type = "choropleth",
+  locations   = ~abbr,
+  locationmode= "USA-states",
+  z           = ~total_pollution,       
+  frame       = ~year,                  
+  text        = ~paste0(
+    state, "<br>",
+    "Year: ", year, "<br>",
+    "Total pollution: ", round(total_pollution, 3)
+  ),
+  hoverinfo   = "text",
+  colorscale  = "Reds",
+  showscale   = TRUE,
+  zmin = min(total_df$total_pollution, na.rm = TRUE),
+  zmax = max(total_df$total_pollution, na.rm = TRUE)
+) %>%
+  layout(
+    title = "Composite Air Quality Index by State (2000–2023)",
+    geo = list(
+      scope      = "usa",
+      projection = list(type = "albers usa"),
+      showlakes  = TRUE,
+      lakecolor  = toRGB("white")
+    )
+  )
+
+fig_total
+
+```
+
+```{r}
+library(dplyr)
+library(plotly)
+
+last_year <- max(total_df$year, na.rm = TRUE)
+total_df_recent <- total_df %>%
+  filter(year >= last_year - 9) %>%     
+  arrange(year, abbr)
+
+qs <- quantile(total_df_recent$total_pollution,
+               probs = c(0.05, 0.95), na.rm = TRUE)
+
+fig_total <- plot_ly(
+  data = total_df_recent,
+  type = "choropleth",
+  locations    = ~abbr,
+  locationmode = "USA-states",
+  z            = ~total_pollution,
+  frame        = ~year,
+  text         = ~paste0(
+    state, "<br>",
+    "Year: ", year, "<br>",
+    "Total pollution: ", round(total_pollution, 3)
+  ),
+  hoverinfo    = "text",
+  colorscale   = "Reds",
+  showscale    = TRUE,
+  zmin         = qs[1], 
+  zmax         = qs[2]   
+) %>%
+  layout(
+   title = paste0("Total Pollution Index by State (Last 10 Years, ",
+                  min(total_df_recent$year), "–", max(total_df_recent$year), ")"),
+    geo = list(
+      scope      = "usa",
+      projection = list(type = "albers usa"),
+      showlakes  = TRUE,
+      lakecolor  = toRGB("white")
+    )
+  )
+
+fig_total
+# Missing data有点多，最后一个图效果好一点
+```
+
+# Regional Pollution Comparison (2010–2023)
+
+```{r}
+region_lookup <- data.frame(
+  state = state.name,
+  region = state.region,
+  stringsAsFactors = FALSE
+)
+
+state_pollutants <- state_pollutants %>%
+  left_join(region_lookup, by = "state")
+
+library(dplyr)
+library(tidyr)
+
+state_pollutants_long <- state_pollutants %>%
+  pivot_longer(
+    cols = c(o3_mean, co_mean, so2_mean, no2_mean),
+    names_to = "pollutant",
+    values_to = "value"
+  ) %>%
+  mutate(
+    pollutant = recode(
+      pollutant,
+      "o3_mean"  = "O3",
+      "co_mean"  = "CO",
+      "so2_mean" = "SO2",
+      "no2_mean" = "NO2"
+    )
+  )
+library(ggplot2)
+
+ggplot(state_pollutants_long, aes(x = region, y = value, fill = region)) +
+  geom_boxplot() +
+  facet_wrap(~ pollutant, scales = "free_y", ncol = 2) +
+  labs(
+    title = "Regional Pollution Comparison (2010–2023)",
+    x = "Region",
+    y = "Mean Pollution Level"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 18)
+  )
+```
+
+Based on the regional comparison of the past decade (2010–2023), we observe clear geographic patterns in U.S. air pollution:
+
+NO₂ (traffic pollution) is highest in the Northeast and North Central regions, where population density and urban traffic are greatest.
+
+SO₂ (industrial pollution) is also elevated in the North Central and Northeast, consistent with regions containing more coal-fired power plants and industrial activity.
+
+O₃ (photochemical pollution) tends to be higher in the West, where strong sunlight and high elevation contribute to ozone formation.
+
+CO levels are generally low nationwide, with only small regional differences.
+
+Overall, the Northeast & North Central are the most polluted regions across multiple pollutants, while the West and South tend to be relatively cleaner in most pollutants except ozone.
+
+# PCA
+
+```{r}
+library(dplyr)
+library(FactoMineR)
+library(factoextra)
+library(usdata)
+
+state_pollutants_AQI <- df_clean %>%
+  group_by(state) %>%
+  summarise(
+    o3_aqi = mean(o3_aqi, na.rm = TRUE),
+    no2_aqi = mean(no2_aqi, na.rm = TRUE),
+    so2_aqi = mean(so2_aqi, na.rm = TRUE),
+    co_aqi = mean(co_aqi, na.rm = TRUE)
+  )
+
+# PCA input using AQI (recommended)
+pca_data <- state_pollutants_AQI %>%
+  select(o3_aqi, no2_aqi, so2_aqi, co_aqi)
+
+state_pollutants_AQI$abbr <- state2abbr(state_pollutants_AQI$state)
+
+row.names(pca_data) <- state_pollutants_AQI$abbr
+
+# Run PCA (FactoMineR)
+pca <- prcomp(pca_data, scale. = TRUE)
+
+
+
+# Biplot
+fviz_pca_biplot(
+  pca,
+  repel = TRUE,
+  label = "ind",
+  title = "PCA of State Pollution Profiles (Using AQI)",
+)
+```
+
+# Dim1 = 以 NO₂/CO/SO₂ 为主的燃烧污染；Dim2 = 以 O₃ 为主的光化学污染
+
+```{r}
+library(dplyr)
+
+pca <- prcomp(pca_data, scale. = TRUE)
+
+pca_scores <- as.data.frame(pca$x) %>%
+  mutate(state = state_pollutants$state)
+
+library(usmap)
+library(ggplot2)
+
+plot_usmap(
+  data = pca_scores,
+  values = "PC1",
+  regions = "states"
+) +
+  scale_fill_gradient2(
+    low = "blue",
+    mid = "white",
+    high = "red",
+    midpoint = 0,
+    name = "PC1 Score"
+  ) +
+  labs(
+    title = "PC1: Overall Pollution Burden (AQI-based)",
+    subtitle = "Higher = more polluted overall | Lower = cleaner"
+  ) +
+  theme(legend.position = "right")
+
+plot_usmap(
+  data = pca_scores,
+  values = "PC2",
+  regions = "states"
+) +
+  scale_fill_gradient2(
+    low = "blue",
+    mid = "white",
+    high = "red",
+    midpoint = 0,
+    name = "PC2 Score"
+  ) +
+  labs(
+    title = "PC2: Pollution Composition (Ozone vs NO2/CO/SO2)",
+    subtitle = "High = Ozone-dominated | Low = Combustion-pollution dominated"
+  ) +
+  theme(legend.position = "right")
+# 现在颜色有点扎眼，回头再改
+```
+
+Geographic Validity of PCA Dimensions
+
+Mapping the PCA scores using AQI-based pollution measures shows that both principal components capture coherent and geographically meaningful air-quality patterns across U.S. states.
+
+PC1 (“overall pollution burden”) is highest in states with elevated levels of NO₂, CO, and SO₂—pollutants associated with combustion sources such as traffic emissions, industrial activity, and fossil-fuel power generation. In the PC1 map, states including Kentucky, Indiana, Illinois, Ohio, Pennsylvania, Tennessee, and parts of the Northeast appear bright red, matching their right-side positions on the PCA biplot near the NO₂/CO/SO₂ vectors. In contrast, states in the Mountain West, northern Plains, and parts of the Southwest—such as Wyoming, Idaho, Montana, Utah, and Colorado—exhibit low PC1 scores, consistent with cleaner overall AQI profiles and their left-side positioning in the biplot.
+
+PC2 (“pollution composition: ozone vs combustion pollutants”) also shows a geographically plausible structure. States with strong ozone-dominated pollution profiles—including Arizona, Nevada, Utah, and parts of the West Coast—display high PC2 values, aligning with their upward/rightward placement near the O₃ vector in the biplot. Conversely, states with stronger combustion-related pollution signatures (SO₂/NO₂/CO)—particularly in the Midwest, Great Lakes region, and portions of the Southeast—exhibit lower PC2 scores, reflecting their downward/leftward orientation in the PCA plot.
+
+Overall, the spatial patterns observed in both PC1 and PC2 maps strongly validate the multivariate interpretation of the PCA results. The principal components capture real and well-documented regional differences in not only pollution intensity (PC1) but also pollution type (PC2), confirming the geographical and environmental relevance of the AQI-based PCA decomposition.
+
+## By pollutant types
+
+# Relationship
+
+```{r}
+library(reshape2)
+
+corr_vars <- df_clean %>%
+  select(o3_aqi, co_aqi, so2_aqi, no2_aqi)
+
+corr_mat <- cor(corr_vars, use = "pairwise.complete.obs",
+                method = "spearman")
+
+corr_df <- as.data.frame(corr_mat) %>%
+  rownames_to_column("var1") %>%
+  pivot_longer(-var1, names_to = "var2", values_to = "corr")
+
+ggplot(corr_df, aes(x = var1, y = var2, fill = corr)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient2(limits = c(-1, 1),
+                       low = "brown",
+                       mid = "white",
+                       high = "blue",
+                       midpoint = 0) +
+  geom_text(aes(label = sprintf("%.2f", corr)), size = 3) +
+  labs(
+    title = "Spearman Correlation among Pollutants (Using AQI)",
+    x = "", y = "", fill = "ρ"
+  ) +
+  theme_minimal(base_size = 12)
+```
+
+# Monthly trend
+
+```{r}
+library(lubridate)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+# Fix month variable
+df_clean <- df_clean %>%
+  mutate(
+    date = as.Date(date),
+    month = month(date)
+  )
+
+# Compute monthly averages of AQI
+monthly_season <- df_clean %>%
+  group_by(month) %>%
+  summarise(
+    o3_aqi  = mean(o3_aqi,  na.rm = TRUE),
+    co_aqi  = mean(co_aqi,  na.rm = TRUE),
+    so2_aqi = mean(so2_aqi, na.rm = TRUE),
+    no2_aqi = mean(no2_aqi, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  pivot_longer(
+    cols = c(o3_aqi, co_aqi, so2_aqi, no2_aqi),
+    names_to = "pollutant",
+    values_to = "value"
+  ) %>%
+  mutate(
+    pollutant = recode(pollutant,
+                       o3_aqi = "O3",
+                       co_aqi = "CO",
+                       so2_aqi = "SO2",
+                       no2_aqi = "NO2"),
+    month = factor(month, levels = 1:12,
+                   labels = paste0(1:12, "月"))
+  )
+
+# Plot
+ggplot(monthly_season,
+       aes(x = month, y = value, group = pollutant, color = pollutant)) +
+  geom_line(linewidth = 0.9) +
+  geom_point(size = 1.8) +
+  labs(
+    title = "Seasonal Pattern of Pollutants (Monthly AQI)",
+    x = "Month",
+    y = "Average AQI",
+    color = "Pollutant"
+  ) +
+  theme_minimal(base_size = 12)
+```
+
+# Facet
+
+```{r}
+poll_long_month <- df_clean %>%
+  select(date, year, month, o3_mean, co_mean, so2_mean, no2_mean) %>%
+  pivot_longer(cols = c(o3_mean, co_mean, so2_mean, no2_mean),
+               names_to = "pollutant", values_to = "value") %>%
+  mutate(
+    pollutant = recode(pollutant,
+                       o3_mean  = "O3",
+                       co_mean  = "CO",
+                       so2_mean = "SO2",
+                       no2_mean = "NO2")
+  )
+
+ggplot(poll_long_month,
+       aes(x = month, y = value)) +
+  geom_boxplot(outlier.alpha = 0.2) +
+  facet_wrap(~ pollutant, scales = "free_y", ncol = 2) +
+  labs(
+    title = "Monthly Distribution of Pollutants",
+    x = "Month", y = "Concentration"
+  ) +
+  theme_minimal(base_size = 12)
+```
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(lubridate)
+
+# --- Step 1: Daily mean O3 AQI ---
+o3_daily <- df_clean %>%
+  mutate(date = as.Date(date)) %>%
+  group_by(date) %>%
+  summarise(o3 = mean(o3_aqi, na.rm = TRUE)) %>%
+  arrange(date)
+
+library(zoo)  # rollmean
+
+o3_daily <- o3_daily %>%
+  mutate(
+    roll7  = rollmean(o3, 7,  fill = NA, align = "right"),
+    roll30 = rollmean(o3, 30, fill = NA, align = "right")
+  )
+
+# Plot rolling trends
+ggplot(o3_daily, aes(x = date)) +
+  geom_line(aes(y = o3), color = "gray70", alpha = 0.6) +
+  geom_line(aes(y = roll7), color = "blue", size = 0.7) +
+  geom_line(aes(y = roll30), color = "red", size = 0.8) +
+  labs(
+    title = "Daily O₃ AQI with 7-day & 30-day Rolling Mean",
+    x = "Date", y = "O₃ AQI",
+    caption = "Gray = raw daily | Blue = 7-day | Red = 30-day smoothing"
+  ) +
+  theme_minimal()
+```
+
+# STL Decomposition
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+o3_ts <- df_clean %>%
+  group_by(date) %>%
+  summarise(o3 = mean(o3_aqi, na.rm = TRUE))
+
+o3_ts <- ts(o3_ts$o3, frequency = 365)
+
+o3_stl <- stl(o3_ts, s.window = "periodic")
+plot(o3_stl)
+```
+
+The STL decomposition of O₃ AQI reveals three key features.
+
+First, ozone displays exceptionally strong and highly consistent seasonality, with levels rising every summer and falling every winter, reflecting its photochemical dependence on sunlight and temperature.
+
+Second, the long-term trend shows little improvement and even a gradual increase in recent years, likely linked to climate-related factors such as hotter summers and widespread wildfires, which make ozone more difficult to control than primary pollutants.
+
+Third, the remainder component contains mostly random fluctuations, indicating that the decomposition successfully isolates the dominant seasonal and trend patterns.
+
+Overall, O₃ AQI is driven by a stable seasonal cycle and a slowly increasing long-term trend, highlighting the ongoing challenge of managing ozone pollution.
+
+# Forecast Auto ARIMA
+
+```{r}
+library(forecast)
+
+fit_arima <- auto.arima(o3_ts)
+o3_fc <- forecast(fit_arima, h = 365)  # forecast 1 year
+
+autoplot(o3_fc) +
+  labs(title = "O₃ Forecast for Next Year", x = "Time", y = "O₃ AQI") +
+  theme_minimal()
+```
+
+# CO
+
+```{r}
+# Daily average CO AQI
+co_ts <- df_clean %>%
+  group_by(date) %>%
+  summarise(co = mean(co_aqi, na.rm = TRUE))
+
+# Convert to time series
+co_ts <- ts(co_ts$co, frequency = 365)
+
+# STL decomposition
+co_stl <- stl(co_ts, s.window = "periodic")
+plot(co_stl)
+```
+
+# so2
+
+```{r}
+# Daily average SO2 AQI
+so2_ts <- df_clean %>%
+  group_by(date) %>%
+  summarise(so2 = mean(so2_aqi, na.rm = TRUE))
+
+# Convert to time series
+so2_ts <- ts(so2_ts$so2, frequency = 365)
+
+# STL decomposition
+so2_stl <- stl(so2_ts, s.window = "periodic")
+plot(so2_stl)
+```
+
+# no2
+
+```{r}
+# Daily average NO2 AQI
+no2_ts <- df_clean %>%
+  group_by(date) %>%
+  summarise(no2 = mean(no2_aqi, na.rm = TRUE))
+
+# Convert to time series
+no2_ts <- ts(no2_ts$no2, frequency = 365)
+
+# STL decomposition
+no2_stl <- stl(no2_ts, s.window = "periodic")
+plot(no2_stl)
+```
+
+# Autocorrelation
+
+```{r}
+acf(o3_ts, main="ACF of O3")
+pacf(o3_ts, main="PACF of O3")
+```
+
+Autocorrelation (ACF)
+
+The ACF of daily O₃ shows extremely slow decay, with correlations above 0.8 for the first several dozen lags. This reflects strong persistence: ozone levels on a given day are highly dependent on conditions in recent days. The long tail of the ACF suggests substantial low-frequency structure, consistent with the strong seasonal cycle seen in the STL decomposition. Such long-memory behavior is typical of atmospheric pollution series influenced by meteorology.
+
+Partial Autocorrelation (PACF)
+
+The PACF displays a dominant spike at lag 1, indicating a strong AR(1) component. Several smaller but still significant spikes up to around lag 10–20 suggest mid-range autoregressive effects. Beyond approximately 50 lags, PACF values fall near zero, indicating that long-range dependence is indirect and primarily driven by the seasonal component rather than high-order autoregressive terms.
+
+Interpretation
+
+Together, the ACF and PACF patterns suggest that daily O₃ can be characterized by a combination of:
+
+A strong short-term autoregressive structure;
+
+A prominent seasonal cycle;
+
+Long-memory behavior arising from atmospheric and climatological processes.
+
+This confirms that O₃ is not a simple short-memory series, but rather a persistent, seasonally driven pollutant whose temporal dynamics reflect both meteorological forcing and photochemical processes.
