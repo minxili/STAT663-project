@@ -116,7 +116,28 @@ header-includes: |
 
 :::
 
+# Analytical Methods Used
 
+::: smaller
+- Exploratory Data Analysis (EDA / Temporal Trends)
+  - Computed annual & monthly averages for four pollutants
+  - Identified long-term trends and seasonality patterns
+
+- Geospatial Analysis
+  - Animated maps to visualize year-to-year changes
+  - State-level choropleth maps
+  - Regional comparisons via boxplots
+
+- Correlation Analysis
+  - Spearman correlation matrix to study relationships among pollutants
+
+- Dimensionality Reduction (PCA)
+  - PCA to summarize the multi-pollutant burden
+  - Mapped PC1/PC2 to reveal spatial patterns and pollutant composition differences
+
+- Time-Series Decomposition
+  - STL decomposition for O₃ to separate trend, seasonal, and remainder components
+:::
 
 # Temporal analysis
 
