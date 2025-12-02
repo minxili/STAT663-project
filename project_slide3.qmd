@@ -1,5 +1,5 @@
 ---
-title: "Visualizing Two Decades of U.S. Air Pollution (2000–2023)"
+title: "Visualizing Two Decades of U.S. Air Pollution (2000–2022)"
 subtitle: "Course: STAT 663 – Statistical Graphics and Data Visualization"
 author: "Team: Siyao Huang & Minxi Li"
 format:
@@ -55,7 +55,7 @@ header-includes: |
 # Dataset
 
 ::: smaller
--   Data come from the **U.S. Pollution Dataset (2000–2022)** available on Kaggle.
+-   Data come from the **U.S. Pollution Dataset (2000–2023)** available on Kaggle.
 
 -   This dataset is compiled from the U.S. EPA Air Quality System (AQS), which provides daily measurements of major air pollutants from monitoring stations across the United States.
 
@@ -80,7 +80,7 @@ header-includes: |
 ::: smaller
 -   **Main Research Question**:
 
-    -   How has U.S. air quality changed from 2000 to 2023 across time, regions, and pollutants?
+    -   How has U.S. air quality changed from 2000 to 2022 across time, regions, and pollutants?
 
 -   **Sub-questions**:
 
@@ -132,82 +132,7 @@ header-includes: |
     -   STL decomposition for pollutants to separate trend, seasonal, and remainder components
 :::
 
-# Section A. Long-Term Trend Analysis (2000–2023)
-
----
-class: center, smaller
----
-
-# Pollutant Sources Overview
-
-<style>
-.grid-2x2 {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  width: 90%;
-  margin: 0 auto;
-}
-.pollutant-card {
-  background: #f5f5f5;
-  border: 1.5px solid #1E88E5;
-  border-radius: 8px;
-  padding: 8px 10px;   /* ⬅ 比之前小很多 */
-  text-align: left;
-  font-size: 0.70em;   /* ⬅ 再缩小字号 */
-  line-height: 1.25;
-}
-.pollutant-title {
-  background: #1E88E5;
-  color: white;
-  text-align: center;
-  padding: 3px 0;
-  font-weight: bold;
-  border-radius: 4px;
-  margin-bottom: 6px;
-  font-size: 0.95em;
-}
-</style>
-
-<div class="grid-2x2">
-
-<div class="pollutant-card">
-  <div class="pollutant-title">Ozone (O₃)</div>
-  <ul>
-    <li><em>Not directly emitted</em> (secondary pollutant)</li>
-    <li>Formed via <strong>sunlight + NOx + VOCs</strong></li>
-    <li>Strongly tied to temperature & weather</li>
-  </ul>
-</div>
-
-<div class="pollutant-card">
-  <div class="pollutant-title">Carbon Monoxide (CO)</div>
-  <ul>
-    <li>Incomplete combustion</li>
-    <li>Vehicles, trucks, heating, wildfires</li>
-    <li>Declines with cleaner engines & fuel rules</li>
-  </ul>
-</div>
-
-<div class="pollutant-card">
-  <div class="pollutant-title">Nitrogen Dioxide (NO₂)</div>
-  <ul>
-    <li>Traffic emissions & industrial combustion</li>
-    <li>Highest in dense urban areas</li>
-    <li>Steady decline with emission standards</li>
-  </ul>
-</div>
-
-<div class="pollutant-card">
-  <div class="pollutant-title">Sulfur Dioxide (SO₂)</div>
-  <ul>
-    <li>Coal-burning power plants, metal smelting</li>
-    <li>Sharpest decline among the four</li>
-    <li>Driven by coal phase-out & scrubbers</li>
-  </ul>
-</div>
-
-</div>
+# Section A. Long-Term Trend Analysis (2000–2022)
 
 # Temporal analysis
 
@@ -419,7 +344,7 @@ heat_o3 <- ggplot(monthly_o3, aes(x = month, y = year, fill = o3)) +
   geom_tile() +
   scale_fill_viridis_c(option = "C") +
   labs(
-    title = "Seasonal Heatmap of O3 AQI (2000–2023)",
+    title = "Seasonal Heatmap of O3 AQI (2000–2022)",
     x = "Month",
     y = "Year",
     fill = "O3 AQI"
@@ -434,7 +359,7 @@ heat_no2 <- ggplot(monthly_no2, aes(x = month, y = year, fill = no2)) +
   geom_tile() +
   scale_fill_viridis_c(option = "C") +
   labs(
-    title = "Seasonal Heatmap of NO2 AQI (2000–2023)",
+    title = "Seasonal Heatmap of NO2 AQI (2000–2022)",
     x = "Month",
     y = "Year",
     fill = "NO2 AQI"
@@ -449,7 +374,7 @@ heat_co <- ggplot(monthly_co, aes(x = month, y = year, fill = co)) +
   geom_tile() +
   scale_fill_viridis_c(option = "C") +
   labs(
-    title = "Seasonal Heatmap of CO AQI (2000–2023)",
+    title = "Seasonal Heatmap of CO AQI (2000–2022)",
     x = "Month",
     y = "Year",
     fill = "CO AQI"
@@ -464,7 +389,7 @@ heat_so2 <- ggplot(monthly_so2, aes(x = month, y = year, fill = so2)) +
   geom_tile() +
   scale_fill_viridis_c(option = "C") +
   labs(
-    title = "Seasonal Heatmap of SO2 AQI (2000–2023)",
+    title = "Seasonal Heatmap of SO2 AQI (2000–2022)",
     x = "Month",
     y = "Year",
     fill = "SO2 AQI"
@@ -659,10 +584,6 @@ pca2 <- plot_usmap(
 
 # STL Decomposition - O₃
 
-::: smaller
-O₃ shows strong seasonality and weak correlation with other pollutants
-:::
-
 ::: large
 ```{r}
 library(dplyr)
@@ -689,7 +610,7 @@ plot(o3_stl)
 
 # Section C. Geographic Disparities
 
-# State-Level Pollution Patterns (2010–2023)
+# State-Level Pollution Patterns (2010–2022)
 
 ```{r}
 library(usmap)
@@ -710,7 +631,7 @@ us_o3 <- plot_usmap(data = state_pollutants,
            regions = "states",
            values = "o3_aqi") +
   scale_fill_continuous(
-    name = "Avg O3 (2010–2023)",
+    name = "Avg O3 (2010–2022)",
     label = scales::label_number(accuracy = 0.001)
   ) +
   labs(title = "Average O3 Levels by State (2010–2023)") +
@@ -720,7 +641,7 @@ us_co <- plot_usmap(data = state_pollutants,
            regions = "states",
            values = "co_aqi") +
   scale_fill_continuous(
-    name = "Avg O3 (2010–2023)",
+    name = "Avg O3 (2010–2022)",
     label = scales::label_number(accuracy = 0.001)
   ) +
   labs(title = "Average CO Levels by State (2010–2023)") +
@@ -730,7 +651,7 @@ us_so2 <- plot_usmap(data = state_pollutants,
            regions = "states",
            values = "so2_aqi") +
   scale_fill_continuous(
-    name = "Avg O3 (2010–2023)",
+    name = "Avg O3 (2010–2022)",
     label = scales::label_number(accuracy = 0.001)
   ) +
   labs(title = "Average SO2 Levels by State (2010–2023)") +
@@ -740,7 +661,7 @@ us_no2 <- plot_usmap(data = state_pollutants,
            regions = "states",
            values = "no2_aqi") +
   scale_fill_continuous(
-    name = "Avg O3 (2010–2023)",
+    name = "Avg O3 (2010–2022)",
     label = scales::label_number(accuracy = 0.001)
   ) +
   labs(title = "Average NO2 Levels by State (2010–2023)") +
@@ -844,12 +765,12 @@ fig_o3
 :::
 
 ::: smaller
--   Early years show inconsistent state monitoring coverage
 
--   Spatial analysis therefore focuses on 2010–2022 for reliable comparisons
+-   Some states show gradual improvement, but the overall national pattern is relatively stable compared with other pollutants.
+-   Occasionally exhibit very high ozone years, linked to extreme heat or wildfire smoke.
 :::
 
-# Regional Pollution Comparison (2010–2023)
+# Regional Pollution Comparison (2010–2022)
 
 ::: large
 ```{r}
