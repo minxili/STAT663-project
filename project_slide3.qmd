@@ -55,7 +55,7 @@ header-includes: |
 # Dataset
 
 ::: smaller
--   Data come from the **U.S. Pollution Dataset (2000–2022)** available on Kaggle
+-   Data come from the **U.S. Pollution Dataset (2000–2022)** available on Kaggle.
 
 -   This dataset is compiled from the U.S. EPA Air Quality System (AQS), which provides daily measurements of major air pollutants from monitoring stations across the United States.
 
@@ -325,9 +325,11 @@ ggplot(temp_all, aes(x = x, y = aqi, color = pollutant, group = pollutant)) +
   )
 
 ```
+
 ::: smaller
 CO, NO₂ and SO₂ show clear long-term declines since 2000, while O₃ stays relatively flat with noticeable spikes in some years.
 :::
+
 # Seasonal Pattern
 
 ```{r}
@@ -401,6 +403,7 @@ heat_so2 <- ggplot(monthly_so2, aes(x = month, y = year, fill = so2)) +
 ::: smaller
 Most pollutants (NO₂, SO₂, CO) show clear long-term declines, while O₃ remains stable with strong, recurring summer peaks. This strong summer seasonality helps explain why O₃ remains challenging to control.
 :::
+
 # Section B. Multi-Pollutant Relationships
 
 # Correlation Among Pollutants
@@ -449,10 +452,13 @@ ggplot(corr_df, aes(x = var1, y = var2, fill = corr)) +
   )
 
 ```
+
 ::: smaller
 -   Pollutants do not vary independently
 :::
+
 # PCA
+
 ::: center
 ```{r}
 library(FactoMineR)
@@ -487,6 +493,7 @@ fviz_pca_biplot(
   )
 ```
 :::
+
 ::: smaller
 Dim1 mainly loads on CO, NO₂, SO₂ → traditional emission-driven pollution.
 
@@ -494,6 +501,7 @@ Dim2 is dominated by O₃, forming its own dimension.
 
 States in the Southwest and Southeast lean more toward the O₃ direction, while industrial states lean toward NO₂/SO₂.
 :::
+
 # PCA
 
 ::: large
@@ -669,7 +677,8 @@ us_no2 <- plot_usmap(data = state_pollutants,
 ```
 
 # State-Level Pollution Changes Over Time
-::: {.stretch}
+
+::: stretch
 ```{r}
 library(dplyr)
 library(tidyr)
@@ -758,13 +767,12 @@ fig_o3 <- plot_ly(
 fig_o3
 ```
 :::
+
 ::: smaller
 -   Early years show inconsistent state monitoring coverage
 
 -   Spatial analysis therefore focuses on 2010–2022 for reliable comparisons
 :::
-
-
 
 # Regional Pollution Comparison (2010–2023)
 
@@ -847,7 +855,6 @@ ggplot(state_pollutants_long, aes(x = region, y = aqi_value, fill = region)) +
     -   Helped maintain consistent storytelling across slides
 :::
 
-
 # AI-Assisted Workflow Reflection
 
 ::: smaller
@@ -876,6 +883,7 @@ ggplot(state_pollutants_long, aes(x = region, y = aqi_value, fill = region)) +
 :::
 
 # Conclusions
+
 ::: smaller
 -   Limitations
     -   Uneven monitoring coverage may bias early-year trends.
