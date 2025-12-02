@@ -209,13 +209,19 @@ state_pollutants <- df_clean %>%
 
 # 用于 region boxplot
 region_lookup <- data.frame(
-  state = state.name,
+  state  = state.name,
   region = state.region,
   stringsAsFactors = FALSE
-)
+) |>
+  dplyr::bind_rows(
+    tibble::tibble(
+      state  = "District Of Columbia",
+      region = "South"   
+    )
+  )
 
-state_pollutants_region <- state_pollutants %>%
-  left_join(region_lookup, by = "state")
+state_pollutants_region <- state_pollutants |>
+  dplyr::left_join(region_lookup, by = "state")
 
 state_pollutants_long <- state_pollutants_region %>%
   pivot_longer(
