@@ -134,6 +134,81 @@ header-includes: |
 
 # Section A. Long-Term Trend Analysis (2000–2023)
 
+---
+class: center, smaller
+---
+
+# Pollutant Sources Overview
+
+<style>
+.grid-2x2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  width: 90%;
+  margin: 0 auto;
+}
+.pollutant-card {
+  background: #f5f5f5;
+  border: 1.5px solid #1E88E5;
+  border-radius: 8px;
+  padding: 8px 10px;   /* ⬅ 比之前小很多 */
+  text-align: left;
+  font-size: 0.70em;   /* ⬅ 再缩小字号 */
+  line-height: 1.25;
+}
+.pollutant-title {
+  background: #1E88E5;
+  color: white;
+  text-align: center;
+  padding: 3px 0;
+  font-weight: bold;
+  border-radius: 4px;
+  margin-bottom: 6px;
+  font-size: 0.95em;
+}
+</style>
+
+<div class="grid-2x2">
+
+<div class="pollutant-card">
+  <div class="pollutant-title">Ozone (O₃)</div>
+  <ul>
+    <li><em>Not directly emitted</em> (secondary pollutant)</li>
+    <li>Formed via <strong>sunlight + NOx + VOCs</strong></li>
+    <li>Strongly tied to temperature & weather</li>
+  </ul>
+</div>
+
+<div class="pollutant-card">
+  <div class="pollutant-title">Carbon Monoxide (CO)</div>
+  <ul>
+    <li>Incomplete combustion</li>
+    <li>Vehicles, trucks, heating, wildfires</li>
+    <li>Declines with cleaner engines & fuel rules</li>
+  </ul>
+</div>
+
+<div class="pollutant-card">
+  <div class="pollutant-title">Nitrogen Dioxide (NO₂)</div>
+  <ul>
+    <li>Traffic emissions & industrial combustion</li>
+    <li>Highest in dense urban areas</li>
+    <li>Steady decline with emission standards</li>
+  </ul>
+</div>
+
+<div class="pollutant-card">
+  <div class="pollutant-title">Sulfur Dioxide (SO₂)</div>
+  <ul>
+    <li>Coal-burning power plants, metal smelting</li>
+    <li>Sharpest decline among the four</li>
+    <li>Driven by coal phase-out & scrubbers</li>
+  </ul>
+</div>
+
+</div>
+
 # Temporal analysis
 
 ```{r}
