@@ -53,22 +53,19 @@ header-includes: |
 # Dataset
 
 ::: smaller
-- Data come from the **U.S. Pollution Dataset (2000–2022)** available on Kaggle:
-  https://www.kaggle.com/datasets/guslovesmath/us-pollution-data-2000-to-2022
+-   Data come from the **U.S. Pollution Dataset (2000–2023)** available on Kaggle.
 
-- This dataset is compiled from the **U.S. EPA Air Quality System (AQS)**, which provides 
-  daily measurements of major air pollutants from monitoring stations across the United States.
+-   This dataset is compiled from the U.S. EPA Air Quality System (AQS), which provides daily measurements of major air pollutants from monitoring stations across the United States.
 
-- For this project, the daily measurements are aggregated into **state-level annual averages** 
-  from 2000 to 2023.
+-   For this project, the daily measurements are aggregated into **state-level annual averages** from 2000 to 2023.
 
-- The dataset includes four major pollutants:
-    - **O₃** (Ozone)
-    - **CO** (Carbon Monoxide)
-    - **SO₂** (Sulfur Dioxide)
-    - **NO₂** (Nitrogen Dioxide)
+-   The dataset includes four major pollutants:
+
+    -   **O₃** (Ozone)
+    -   **CO** (Carbon Monoxide)
+    -   **SO₂** (Sulfur Dioxide)
+    -   **NO₂** (Nitrogen Dioxide)
 :::
-
 
 # Dataset
 
@@ -97,46 +94,40 @@ header-includes: |
 :::
 
 # Data Wrangling & Processing
+
 ::: smaller
-
-- **Main Cleaning Steps**
-  - Standardized column names and parsed dates
-  - Extracted temporal features (`year`, `month`) for trend and seasonality analysis
-  - Removed invalid or negative pollutant values
-  - Ensured data quality by checking pollutant coverage across states and years
-  - Filtered out states with insufficient long-term coverage  
-  - Excluded incomplete year 2023
-  - Merged with state-abbreviation lookup for mapping
-
-- **Major Challenges**
-  - Missing pollutant values in early years  
-  - Uneven monitoring coverage across states  
-  - Aligning daily observations with state-level annual summaries  
-  - Large dataset (~665k rows) requiring efficient processing
-
+-   **Main Cleaning Steps**
+    -   Standardized column names and parsed dates
+    -   Extracted temporal features (`year`, `month`) for trend and seasonality analysis
+    -   Removed invalid or negative pollutant values
+    -   Ensured data quality by checking pollutant coverage across states and years
+    -   Filtered out states with insufficient long-term coverage\
+    -   Excluded incomplete year 2023
+    -   Merged with state-abbreviation lookup for mapping
+-   **Major Challenges**
+    -   Missing pollutant values in early years\
+    -   Uneven monitoring coverage across states\
+    -   Aligning daily observations with state-level annual summaries\
+    -   Large dataset (\~665k rows) requiring efficient processing
 :::
 
 # Analytical Methods Used
 
 ::: smaller
-- Exploratory Data Analysis (EDA / Temporal Trends)
-  - Computed annual & monthly averages for four pollutants
-  - Identified long-term trends and seasonality patterns
-
-- Geospatial Analysis
-  - Animated maps to visualize year-to-year changes
-  - State-level choropleth maps
-  - Regional comparisons via boxplots
-
-- Correlation Analysis
-  - Spearman correlation matrix to study relationships among pollutants
-
-- Dimensionality Reduction (PCA)
-  - PCA to summarize the multi-pollutant burden
-  - Mapped PC1/PC2 to reveal spatial patterns and pollutant composition differences
-
-- Time-Series Decomposition
-  - STL decomposition for O₃ to separate trend, seasonal, and remainder components
+-   Exploratory Data Analysis (EDA / Temporal Trends)
+    -   Computed annual & monthly averages for four pollutants
+    -   Identified long-term trends and seasonality patterns
+-   Geospatial Analysis
+    -   Animated maps to visualize year-to-year changes
+    -   State-level choropleth maps
+    -   Regional comparisons via boxplots
+-   Correlation Analysis
+    -   Spearman correlation matrix to study relationships among pollutants
+-   Dimensionality Reduction (PCA)
+    -   PCA to summarize the multi-pollutant burden
+    -   Mapped PC1/PC2 to reveal spatial patterns and pollutant composition differences
+-   Time-Series Decomposition
+    -   STL decomposition for pollutants to separate trend, seasonal, and remainder components
 :::
 
 # Temporal analysis
@@ -350,9 +341,10 @@ ggplot(monthly_o3, aes(x = month, y = year, fill = o3)) +
 
 ::: smaller
 Most pollutants (NO₂, SO₂, CO) show clear long-term declines, while O₃ remains stable with strong, recurring summer peaks.
-::: 
+:::
 
 ## State-Level Pollution Changes Over Time (2000–2023)
+
 ```{r}
 library(dplyr)
 library(tidyr)
@@ -442,11 +434,10 @@ fig_o3
 ```
 
 ::: smaller
+-   Early years show inconsistent state monitoring coverage
 
-- Early years show inconsistent state monitoring coverage
-
-- Spatial analysis therefore focuses on 2010–2022 for reliable comparisons
-::: 
+-   Spatial analysis therefore focuses on 2010–2022 for reliable comparisons
+:::
 
 # State-Level Pollution Patterns (2010–2023)
 
@@ -511,7 +502,8 @@ us_no2 <- plot_usmap(data = state_pollutants,
 ```
 
 # Regional Pollution Comparison (2010–2023)
-::: {.large}
+
+::: large
 ```{r}
 region_lookup <- data.frame(
   state = state.name,
@@ -558,14 +550,15 @@ ggplot(state_pollutants_long, aes(x = region, y = aqi_value, fill = region)) +
 
 ```
 :::
+
 ::: smaller
-- CO: West has the highest CO AQI — influenced by wildfires + urban traffic.
+-   CO: West has the highest CO AQI — influenced by wildfires + urban traffic.
 
-- NO₂: Northeast & West show higher NO₂ levels — dense traffic corridors.
+-   NO₂: Northeast & West show higher NO₂ levels — dense traffic corridors.
 
-- SO₂: North Central region stands out — older industrial & energy facilities.
+-   SO₂: North Central region stands out — older industrial & energy facilities.
 
-- O₃: West has the highest O₃ — driven by strong sunlight and elevation.
+-   O₃: West has the highest O₃ — driven by strong sunlight and elevation.
 :::
 
 # Correlation Among Pollutants
@@ -598,9 +591,9 @@ ggplot(corr_df, aes(x = var1, y = var2, fill = corr)) +
   theme_minimal(base_size = 12)
 ```
 
-- Pollutants do not vary independently
+-   Pollutants do not vary independently
 
-# Why PCA? 
+# Why PCA?
 
 ::: smaller
 -   Single-pollutant maps tell where each pollutant is high/low
@@ -610,7 +603,7 @@ ggplot(corr_df, aes(x = var1, y = var2, fill = corr)) +
 -   PCA summarizes two things:
 
     -   Overall pollution burden (PC1)
-    
+
     -   Pollution composition (ozone-dominated vs combustion-dominated)
 
 -   Helps identify:
@@ -621,7 +614,8 @@ ggplot(corr_df, aes(x = var1, y = var2, fill = corr)) +
 :::
 
 # PCA
-::: {.large}
+
+::: large
 ```{r}
 library(dplyr)
 library(FactoMineR)
@@ -692,20 +686,20 @@ pca2 <- plot_usmap(
 (pca1 | pca2) 
 ```
 :::
+
 ::: smaller
-- PC1: Identifies which states are the most polluted overall.
+-   PC1: Identifies which states are the most polluted overall.
 
-- PC2: Identifies what type of pollution dominates each state.
-::: 
-
-
-
+-   PC2: Identifies what type of pollution dominates each state.
+:::
 
 # STL Decomposition - O₃
+
 ::: smaller
 O₃ shows strong seasonality and weak correlation with other pollutants
-::: 
-::: {.large}
+:::
+
+::: large
 ```{r}
 library(dplyr)
 library(ggplot2)
@@ -719,16 +713,18 @@ o3_ts <- ts(o3_ts$o3, frequency = 365)
 o3_stl <- stl(o3_ts, s.window = "periodic")
 plot(o3_stl)
 ```
-::: 
+:::
+
 ::: smaller
-- Seasonal cycle is very strong and consistent every year
-  
-- Trend shows early decline but a plateau in recent years
-  
-- Remainder show short-term variability (weather, fires, local events)
-::: 
+-   Seasonal cycle is very strong and consistent every year
+
+-   Trend shows early decline but a plateau in recent years
+
+-   Remainder show short-term variability (weather, fires, local events)
+:::
 
 # AI-Assisted Workflow Reflection
+
 ::: smaller
 -   How I Used AI
     -   Described the types of visual patterns I wanted to explore
@@ -739,46 +735,44 @@ plot(o3_stl)
     -   Accelerated exploratory data analysis
     -   Suggested visualization ideas I hadn’t considered
     -   Improved the clarity and appearance of plots
-    -   Helped maintain consistent storytelling across slides  
-::: 
+    -   Helped maintain consistent storytelling across slides\
+:::
 
 # AI-Assisted Workflow Reflection
-::: smaller
-- Limitations
-    -   Sometimes suggested variables not in the dataset  
-    -   Produced repetitive or overly long code that required rewriting  
-    -   Needed human verification for statistical interpretation (PCA meaning, correlations, etc.)
-    -   Lacked full context awareness; required manual refinement for reproducibility  
 
-- Ensuring Reproducibility
-    -   Rewrote and cleaned AI-generated code to ensure correctness and consistency  
-    -   Verified statistical interpretations independently rather than relying on AI output  
-    -   Organized all final code, data transformations, and figures into a fully reproducible workflow  
-    -   Ensured all scripts are executable end-to-end without AI intervention  
-::: 
+::: smaller
+-   Limitations
+    -   Sometimes suggested variables not in the dataset\
+    -   Produced repetitive or overly long code that required rewriting\
+    -   Needed human verification for statistical interpretation (PCA meaning, correlations, etc.)
+    -   Lacked full context awareness; required manual refinement for reproducibility
+-   Ensuring Reproducibility
+    -   Rewrote and cleaned AI-generated code to ensure correctness and consistency\
+    -   Verified statistical interpretations independently rather than relying on AI output\
+    -   Organized all final code, data transformations, and figures into a fully reproducible workflow\
+    -   Ensured all scripts are executable end-to-end without AI intervention\
+:::
 
 # Final Product Demonstration
 
 # Conclusions
+
 ::: smaller
-- Key findings
-  - U.S. air quality has improved since 2000, with NO₂, SO₂, and CO showing strong long-term declines.
-  - O₃ remains the main challenge: trend is flat and summer peaks persist.
-  - Clear regional differences: Western states show higher O₃; combustion pollutants decreased most in the Northeast & Midwest.
-  - Pollutants behave differently: NO₂/SO₂/CO decline together, while O₃ follows seasonal photochemical patterns.
-
-
-- Limitations
-  - Uneven monitoring coverage may bias early-year trends.
-  - AQI averages may smooth out short-term extreme events (wildfire spikes).
-  - Analysis is descriptive, not causal.
-
-- Next Steps
-  - Add meteorological factors (temperature, sunlight) to explain O₃ patterns.
-  - Incorporate wildfire indicators to capture recent extreme events.
-  - Extend to city- or county-level data for finer spatial detail.
+-   Key findings
+    -   U.S. air quality has improved since 2000, with NO₂, SO₂, and CO showing strong long-term declines.
+    -   O₃ remains the main challenge: trend is flat and summer peaks persist.
+    -   Clear regional differences: Western states show higher O₃; combustion pollutants decreased most in the Northeast & Midwest.
+    -   Pollutants behave differently: NO₂/SO₂/CO decline together, while O₃ follows seasonal photochemical patterns.
+-   Limitations
+    -   Uneven monitoring coverage may bias early-year trends.
+    -   AQI averages may smooth out short-term extreme events (wildfire spikes).
+    -   Analysis is descriptive, not causal.
+-   Next Steps
+    -   Add meteorological factors (temperature, sunlight) to explain O₃ patterns.
+    -   Incorporate wildfire indicators to capture recent extreme events.
+    -   Extend to city- or county-level data for finer spatial detail.
 :::
 
----
+------------------------------------------------------------------------
 
-**Thank you!** 
+**Thank you!**
