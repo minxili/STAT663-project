@@ -445,7 +445,6 @@ ui <- navbarPage(
   theme = shinytheme("flatly"),  
   collapsible = TRUE,
   
-  # ----  Overview  ----
   tabPanel(
     "Overview",
     fluidPage(
@@ -456,23 +455,35 @@ ui <- navbarPage(
       fluidRow(
         column(
           4,
-          wellPanel(
-            h4("Temporal Coverage"),
-            p(paste0("Years: ", year_min, " – ", year_max))
+          actionButton(
+            "show_obs_plot",
+            label = wellPanel(
+              h4("Temporal Coverage"),
+              p(paste0("Years: ", year_min, " – ", year_max))
+            ),
+            style = "padding:0; border:none; background:none; color:black;"
           )
         ),
         column(
           4,
-          wellPanel(
-            h4("Number of States"),
-            p(paste0(n_states, " states with sufficiently complete data"))
+          actionButton(
+            "show_state_plot",
+            label = wellPanel(
+              h4("Number of States"),
+              p(paste0(n_states, " states with sufficiently complete data"))
+            ),
+            style = "padding:0; border:none; background:none; color:black;"
           )
         ),
         column(
           4,
-          wellPanel(
-            h4("Pollutants"),
-            p("O\u2083, NO\u2082, SO\u2082, CO (AQI-based indicators)")
+          actionButton(
+            "show_corr_plot",
+            label = wellPanel(
+              h4("Pollutants"),
+              p("O₃, NO₂, SO₂, CO (AQI-based indicators)")
+            ),
+            style = "padding:0; border:none; background:none; color:black;"
           )
         )
       ),
@@ -488,7 +499,6 @@ ui <- navbarPage(
       )
     )
   ),
-  
   tabPanel(
     "Time Trends",
     sidebarLayout(
@@ -638,6 +648,56 @@ ui <- navbarPage(
 #==========================
 server <- function(input, output, session) {
   
+  observeEvent(input$show_obs_plot, {
+    showModal(modalDialog(
+      title = "Number of Observations per Year",
+      plotOutput("obs_year_plot", height = "350px"),
+      easyClose = TRUE,
+      size = "l"
+    ))
+  })
+  
+  output$obs_year_plot <- renderPlot({
+    df_clean %>%
+      count(year) %>%
+      ggplot(aes(year, n)) +
+      geom_line(color = "steelblue") +
+      geom_point(color = "steelblue") +
+      labs(title = "Number of Observations per Year",
+           x = "Year", y = "Count") +
+      theme_minimal()
+  })
+  observeEvent(input$show_state_plot, {
+    showModal(modalDialog(
+      title = "Spatial Distribution of Records",
+      plotOutput("state_record_plot", height = "420px"),
+      easyClose = TRUE,
+      size = "l"
+    ))
+  })
+  
+  output$state_record_plot <- renderPlot({
+    records_by_state <- df_clean %>%
+      count(state)
+    
+    plot_usmap(data = records_by_state, values = "n") +
+      scale_fill_continuous(name = "Record Count",
+                            low = "#D4E6F1", high = "#1B4F72") +
+      labs(title = "Record Counts by State") +
+      theme(legend.position = "right")
+  })
+  observeEvent(input$show_corr_plot, {
+    showModal(modalDialog(
+      title = "Correlation Among Pollutants",
+      plotOutput("corr_heatmap_popup", height = "420px"),
+      easyClose = TRUE,
+      size = "l"
+    ))
+  })
+  
+  output$corr_heatmap_popup <- renderPlot({
+    corr_plot
+  })
   # Time Trend
   output$trendPlot <- renderPlot({
     req(input$trend_pollutants)
