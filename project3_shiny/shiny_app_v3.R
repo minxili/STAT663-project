@@ -167,8 +167,12 @@ monthly_heat_all <- df_clean %>%
     CO  = mean(co_aqi, na.rm = TRUE),
     .groups = "drop"
   ) %>%
-  mutate(month = month.abb[as.integer(month)])
-
+  mutate(
+    month = factor(
+      month.abb[as.integer(month)],   
+      levels = month.abb             
+    )
+  )
 #--------------------------
 # 2. Spatial：state map + region boxplot
 #--------------------------
